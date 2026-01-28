@@ -5,7 +5,7 @@ on:
       vcs_url:
         description: 'Repository URL to scan'
         required: true
-        default: 'https://github.com/Source-Code-Control-Ltd/Sable'
+        default: 'https://github.com/Martin-SourceCode/sPortal.git'
 jobs:
   ort-scan:
     runs-on: ubuntu-latest
