@@ -5,7 +5,7 @@ on:
       vcs_url:
         description: 'Repository URL to scan'
         required: true
-        default: 'https://github.com/twbs/bootstrap'
+        default: 'https://github.com/mtejaveluri/Testing-private'
 jobs:
   ort-scan:
     runs-on: ubuntu-latest
