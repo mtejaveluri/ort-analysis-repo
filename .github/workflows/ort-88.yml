@@ -80,8 +80,8 @@ jobs:
         GIT_USERNAME: oauth2
         GIT_PASSWORD: ${{ github.event.inputs.github_token || secrets.GITHUB_TOKEN }}
       with:
-        vcs-url: 'https://github.com/teriflix/scrite'
-        vcs-revision: '2.0.17-prod'
+        vcs-url: 'https://github.com/WebGoat/WebGoat'
+        vcs-revision: 'vtest10'
         allow-dynamic-versions: 'true'
         run: >-
             cache-dependencies,
