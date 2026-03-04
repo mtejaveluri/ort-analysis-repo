@@ -11,7 +11,7 @@ on:
       vcs_revision:
         description: 'Branch / Tag / Commit'
         required: false
-        default: 'vtest10'
+        default: ''
 
       github_token:
         description: 'GitHub Personal Access Token for private repository access'
@@ -110,10 +110,10 @@ jobs:
 
       with:
 
-        # Hardcoded GitHub repo for testing
-        vcs-url: 'https://github.com/WebGoat/WebGoat'
+        # it is dynamic now, the values can be changed while triggering the workflow
+        vcs-url: ${{ github.event.inputs.vcs_url }}
 
-        vcs-revision: 'vtest10'
+        vcs-revision: ${{ github.event.inputs.vcs_revision }}
 
         allow-dynamic-versions: 'true'
 
