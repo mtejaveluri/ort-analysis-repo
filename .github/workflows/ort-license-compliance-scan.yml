@@ -4,22 +4,22 @@ on:
   workflow_dispatch:
     inputs:
       vcs_url:
-        description: 'Repository clone URL to scan (GitHub / GitLab). Use clone URL, not /tree/ URL.'
+        description: 'Repository URL to scan'
         required: true
         default: 'https://github.com/WebGoat/WebGoat.git'
 
       vcs_revision:
-        description: 'Branch/Tag/Commit to scan (optional). Example: main or v1.2.3 or a commit SHA.'
+        description: 'Branch / Tag / Commit'
         required: false
-        default: ''
+        default: 'vtest10'
 
       github_token:
-        description: 'GitHub Personal Access Token (only needed for private GitHub repos)'
+        description: 'GitHub Personal Access Token for private repository access'
         required: false
         default: ''
 
       gitlab_token:
-        description: 'GitLab Personal Access Token (only needed for private GitLab repos)'
+        description: 'GitLab Personal Access Token for private repository access'
         required: false
         default: ''
 
@@ -27,124 +27,106 @@ jobs:
   ort-scan:
     runs-on: ubuntu-latest
     name: ORT License Compliance Check
+
     permissions:
       contents: read
       security-events: write
 
     steps:
-      # 1) Checkout THIS repo to get your ORT config files
-      - name: Checkout ORT config repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          path: ".ort-config"
 
-      # 2) Place ORT config where ORT expects it
-      - name: Setup ORT configuration files
-        run: |
-          set -euo pipefail
+    # Step 1 — Checkout this repo (only for ORT configs)
+    - name: Checkout ORT config repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        path: ".ort-config"
 
-          # Create ORT config directory
-          mkdir -p "$HOME/.ort/config"
+    # Step 2 — Setup ORT configuration
+    - name: Setup ORT configuration files
+      run: |
 
-          # Move fetched default config into place
-          mv .ort-config "$HOME/.ort/config/.ort-config"
+        echo "Setting up ORT config..."
 
-          # Copy evaluator rules and license classifications into ORT config directory
-          cp "$HOME/.ort/config/.ort-config/evaluator.rules.kts" "$HOME/.ort/config/evaluator.rules.kts"
-          cp "$HOME/.ort/config/.ort-config/license-classifications.yml" "$HOME/.ort/config/license-classifications.yml"
+        mkdir -p "$HOME/.ort/config"
 
-          echo "ORT configuration files setup complete"
+        mv .ort-config "$HOME/.ort/config/.ort-config"
 
-      # 3) Configure Git credentials for private GitHub repo access (ONLY if GitHub token is provided)
-      - name: Configure Git credentials for private GitHub repository access
-        if: github.event.inputs.github_token != ''
-        run: |
-          set -euo pipefail
+        cp "$HOME/.ort/config/.ort-config/evaluator.rules.kts" \
+           "$HOME/.ort/config/evaluator.rules.kts"
 
-          echo "Configuring GitHub token auth..."
-          git config --global url."https://${{ github.event.inputs.github_token }}@github.com/".insteadOf "https://github.com/"
-          git config --global url."https://oauth2:${{ github.event.inputs.github_token }}@github.com/".insteadOf "https://github.com/"
-          git config --global credential.helper store
+        cp "$HOME/.ort/config/.ort-config/license-classifications.yml" \
+           "$HOME/.ort/config/license-classifications.yml"
 
-          echo "https://oauth2:${{ github.event.inputs.github_token }}@github.com" > ~/.git-credentials
-          echo "https://${{ github.event.inputs.github_token }}@github.com" >> ~/.git-credentials
+        echo "ORT config setup completed"
 
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-          chmod 600 ~/.git-credentials
+    # Step 3 — Configure GitHub authentication (only if token provided)
+    - name: Configure GitHub credentials
+      if: github.event.inputs.github_token != ''
+      run: |
 
-      # 4) Configure Git credentials for private GitLab repo access (ONLY if GitLab token is provided)
-      - name: Configure Git credentials for private GitLab repository access
-        if: github.event.inputs.gitlab_token != ''
-        run: |
-          set -euo pipefail
+        echo "Configuring GitHub authentication"
 
-          VCS_URL="${{ github.event.inputs.vcs_url }}"
-          HOST="$(echo "$VCS_URL" | awk -F/ '{print $3}')"
+        git config --global url."https://${{ github.event.inputs.github_token }}@github.com/".insteadOf "https://github.com/"
+        git config --global credential.helper store
 
-          echo "Configuring GitLab token auth for host: $HOST"
-          # GitLab PAT over HTTPS generally uses username 'oauth2'
-          git config --global url."https://oauth2:${{ github.event.inputs.gitlab_token }}@$HOST/".insteadOf "https://$HOST/"
-          git config --global credential.helper store
+        echo "https://${{ github.event.inputs.github_token }}@github.com" > ~/.git-credentials
 
-          echo "https://oauth2:${{ github.event.inputs.gitlab_token }}@$HOST" > ~/.git-credentials
-          chmod 600 ~/.git-credentials
+        chmod 600 ~/.git-credentials
 
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -t rsa "$HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+    # Step 4 — Configure GitLab authentication (if GitLab token provided)
+    - name: Configure GitLab credentials
+      if: github.event.inputs.gitlab_token != ''
+      run: |
 
-      # 5) Validate GitHub token and repository access (ONLY for GitHub URLs)
-      - name: Validate GitHub token and repository access
-        if: github.event.inputs.github_token != '' && contains(github.event.inputs.vcs_url, 'github.com')
-        run: |
-          set -euo pipefail
+        HOST=$(echo "${{ github.event.inputs.vcs_url }}" | awk -F/ '{print $3}')
 
-          OWNER=$(echo "${{ github.event.inputs.vcs_url }}" | sed -E 's|.*github\.com[:/]([^/]+)/.*|\1|')
-          REPO=$(echo "${{ github.event.inputs.vcs_url }}" | sed -E 's|.*github\.com[:/][^/]+/([^/.]+).*|\1|')
+        echo "Detected Git host: $HOST"
 
-          echo "Testing token access to: $OWNER/$REPO"
+        git config --global url."https://oauth2:${{ github.event.inputs.gitlab_token }}@$HOST/".insteadOf "https://$HOST/"
 
-          if curl -s -H "Authorization: token ${{ github.event.inputs.github_token }}" \
-            "https://api.github.com/repos/$OWNER/$REPO" | grep -q '"id"'; then
-            echo "✓ Token is valid and has access to the repository"
-          else
-            echo "⚠ Token validation: repository may be public or token may not have access"
-          fi
+        git config --global credential.helper store
 
-      # 6) Generic repo reachability check (works for GitHub + GitLab)
-      - name: Validate repository is reachable (GitHub/GitLab)
-        run: |
-          set -euo pipefail
+        echo "https://oauth2:${{ github.event.inputs.gitlab_token }}@$HOST" > ~/.git-credentials
 
-          echo "Checking repository reachability..."
-          echo "VCS URL: ${{ github.event.inputs.vcs_url }}"
-          git ls-remote -h "${{ github.event.inputs.vcs_url }}" >/dev/null
-          echo "✓ Repository is reachable"
+        chmod 600 ~/.git-credentials
 
-      # 7) Run ORT (uses INPUTS, not hardcoded)
-      - name: Run ORT
-        uses: oss-review-toolkit/ort-ci-github-action@v1
-        env:
-          # Pass whichever token the user provided; if none, keep empty (public repos)
-          ORT_VCS_GIT_USERNAME: oauth2
-          ORT_VCS_GIT_PASSWORD: ${{ github.event.inputs.github_token != '' && github.event.inputs.github_token || github.event.inputs.gitlab_token }}
-          GIT_USERNAME: oauth2
-          GIT_PASSWORD: ${{ github.event.inputs.github_token != '' && github.event.inputs.github_token || github.event.inputs.gitlab_token }}
-        with:
-          vcs-url: ${{ github.event.inputs.vcs_url }}
-          vcs-revision: ${{ github.event.inputs.vcs_revision }}
-          allow-dynamic-versions: 'true'
-          run: >-
-            cache-dependencies,
-            labels,
-            analyzer,
-            scanner,
-            advisor,
-            evaluator,
-            reporter,
-            upload-results
-          ort-cli-args: '-P ort.scanner.skipExcluded=true'
-          ort-cli-scan-args: '--package-types=PROJECT'
+    # Step 5 — Validate repository accessibility
+    - name: Validate repository access
+      run: |
+
+        echo "Checking repository reachability..."
+
+        git ls-remote "${{ github.event.inputs.vcs_url }}" > /dev/null
+
+        echo "Repository reachable"
+
+    # Step 6 — Run ORT
+    - name: Run ORT
+      uses: oss-review-toolkit/ort-ci-github-action@v1
+
+      env:
+        ORT_VCS_GIT_USERNAME: oauth2
+        ORT_VCS_GIT_PASSWORD: ${{ github.event.inputs.github_token != '' && github.event.inputs.github_token || github.event.inputs.gitlab_token }}
+
+      with:
+
+        # Hardcoded GitHub repo for testing
+        vcs-url: 'https://github.com/WebGoat/WebGoat'
+
+        vcs-revision: 'vtest10'
+
+        allow-dynamic-versions: 'true'
+
+        run: >-
+          cache-dependencies,
+          labels,
+          analyzer,
+          scanner,
+          advisor,
+          evaluator,
+          reporter,
+          upload-results
+
+        ort-cli-args: '-P ort.scanner.skipExcluded=true'
+
+        ort-cli-scan-args: '--package-types=PROJECT'
