@@ -1,4 +1,4 @@
-name: ORT License Compliance Scan
+name: ORT scan(both github and gitlab)
 
 on:
   workflow_dispatch:
