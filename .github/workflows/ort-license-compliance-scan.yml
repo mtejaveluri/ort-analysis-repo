@@ -6,7 +6,7 @@ on:
       vcs_url:
         description: 'Repository URL to scan'
         required: true
-        default: 'https://github.com/WebGoat/WebGoat.git'
+        default: ''
 
       vcs_revision:
         description: 'Branch / Tag / Commit'
