@@ -1,3 +1,4 @@
+---
 - id: "Maven:org.apache.tomcat:tomcat-servlet-api:11.0.5"
   curations:
     comment: "Manually verified from Maven Central - Apache-2.0 applies to main files, CDDL-1.0 and EPL-2.0 apply to specific XML schema files"
