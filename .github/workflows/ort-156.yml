@@ -5,7 +5,7 @@ on:
       vcs_url:
         description: 'Repository URL to scan'
         required: true
-        default: 'https://github.com/apache/logging-log4j2/tree/rel/2.14.0'
+        default: 'https://github.com/Martin-SourceCode/physical-health-app-responsive'
       github_token:
         description: 'GitHub Personal Access Token for private repository access'
         required: false
