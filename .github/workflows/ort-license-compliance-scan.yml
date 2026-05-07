@@ -132,3 +132,5 @@ jobs:
         ort-cli-args: '-P ort.scanner.skipExcluded=true'
 
         ort-cli-scan-args: '--package-types=PROJECT'
+        ort-cli-report-args: '-O CycloneDX=output.file.formats=json,xml'
+        
