@@ -67,7 +67,7 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: 'gradle'
+        #cache: 'gradle'
 
     # Step 4 — Configure GitHub credentials (only if token provided)
     - name: Configure GitHub credentials
