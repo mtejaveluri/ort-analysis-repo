@@ -11,3 +11,9 @@
     declared_license_mapping:
       "Openfont-1.1": "OFL-1.1"
     concluded_license: "OFL-1.1 AND MIT"
+    
+- id: "Maven:org.openjdk.nashorn:nashorn-core:15.6"
+  curations:
+    comment: "Manually verified from Maven Central and OpenJDK GitHub repository - licensed under GPL v2 with Classpath exception"
+    concluded_license: "GPL-2.0-only WITH Classpath-exception-2.0"
+    homepage_url: "https://github.com/openjdk/nashorn"
