@@ -5,7 +5,7 @@ on:
       vcs_url:
         description: 'Repository URL to scan'
         required: true
-        default: 'https://github.com/mtejaveluri/private-requirejs'
+        default: 'https://github.com/twbs/bootstrap/v5.3.8'
       github_token:
         description: 'GitHub Personal Access Token for private repository access'
         required: false
@@ -80,7 +80,7 @@ jobs:
         GIT_USERNAME: oauth2
         GIT_PASSWORD: ${{ github.event.inputs.github_token || secrets.GITHUB_TOKEN }}
       with:
-        vcs-url: 'https://github.com/mtejaveluri/private-requirejs'
+        vcs-url: 'https://github.com/twbs/bootstrap/v5.3.8'
         vcs-revision: 'main'
         allow-dynamic-versions: 'true'
         run: >-
