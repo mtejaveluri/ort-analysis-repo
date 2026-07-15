@@ -3,8 +3,6 @@ version: 2.0
 
 excludes:
   paths:
-     #pattern: "**/funTest/**"
-      #reason: "Functional test assets - not part of production code"
     - pattern: "**/src/*/test/**"
       reason: "Unit test files"
     - pattern: "**/tests/**"
@@ -13,6 +11,8 @@ excludes:
       reason: "Specification/test files"
     - pattern: "**/.test/**"
       reason: "Hidden test directories"
+    - pattern: "*/package-managers/cocoapods/**"
+      reason: "Conflicting OTP project test assets"
 
 packageManagers:
   Mix:
@@ -27,7 +27,7 @@ packageManagers:
       - "**/rebar.lock"
   
   Rebar3:
-    enabled: true
+    enabled: false
     pathIncludes:
       - "src/erlang/**"
       - "**/rebar.config"
@@ -45,7 +45,6 @@ scanner:
     - Gradle
     - Maven
     - Mix
-    - Rebar3
 
 analyzer:
   skipExcluded: true
