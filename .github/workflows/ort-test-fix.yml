@@ -59,6 +59,14 @@ jobs:
           echo "⚠ Token validation check: repository may be public or token may not have access"
         fi
     
+    - name: Clean workspace for ORT
+      run: |
+        echo "Cleaning workspace to prepare for ORT scanning..."
+        cd /home/runner/work/ort-analysis-repo
+        rm -rf * .git .gitignore || true
+        ls -la
+        echo "Workspace cleaned"
+    
     - name: Run ORT
       uses: oss-review-toolkit/ort-ci-github-action@v1
       env:
