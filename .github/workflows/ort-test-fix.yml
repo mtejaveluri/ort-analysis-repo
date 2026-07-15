@@ -7,7 +7,7 @@ on:
         required: true
         default: 'https://github.com/umm0/ort'
       github_token:
-        description: 'GitHub Personal Access Token for private repository access'
+        description: 'GitHub Personal Access Token for private repository acces'
         required: false
         default: ''
 jobs:
