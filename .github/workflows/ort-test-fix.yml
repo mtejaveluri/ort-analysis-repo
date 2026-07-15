@@ -94,5 +94,5 @@ jobs:
             evaluator,
             reporter,
             upload-results
-        ort-cli-args: '-P ort.scanner.skipExcluded=true --exclude "**/funTest/**" --exclude "**/test/**"'
+        ort-cli-args: '-P ort.scanner.skipExcluded=true'
         ort-cli-scan-args: '--package-types=PROJECT'
