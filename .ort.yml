@@ -1,0 +1,51 @@
+name: ORT Configuration
+version: 2.0
+
+excludes:
+  paths:
+     #pattern: "**/funTest/**"
+      #reason: "Functional test assets - not part of production code"
+    - pattern: "**/src/*/test/**"
+      reason: "Unit test files"
+    - pattern: "**/tests/**"
+      reason: "Test suite files"
+    - pattern: "**/spec/**"
+      reason: "Specification/test files"
+    - pattern: "**/.test/**"
+      reason: "Hidden test directories"
+
+packageManagers:
+  Mix:
+    enabled: true
+    pathIncludes:
+      - "src/elixir/**"
+      - "apps/*/mix.exs"
+      - "**/mix.exs"
+    pathExcludes:
+      - "src/erlang/**"
+      - "**/rebar.config"
+      - "**/rebar.lock"
+  
+  Rebar3:
+    enabled: true
+    pathIncludes:
+      - "src/erlang/**"
+      - "**/rebar.config"
+      - "**/rebar.lock"
+    pathExcludes:
+      - "src/elixir/**"
+      - "**/mix.exs"
+      - "**/mix.lock"
+
+scanner:
+  skipExcluded: true
+  packageManagers:
+    - Npm
+    - Pip
+    - Gradle
+    - Maven
+    - Mix
+    - Rebar3
+
+analyzer:
+  skipExcluded: true
