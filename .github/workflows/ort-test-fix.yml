@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       vcs_url:
-        description: 'Repository URL to scan'
+        description: 'Repository URL to scan.'
         required: true
         default: 'https://github.com/umm0/ort'
       github_token:
