@@ -96,3 +96,5 @@ jobs:
             upload-results
         ort-cli-args: '-P ort.scanner.skipExcluded=true'
         ort-cli-scan-args: '--package-types=PROJECT'
+        ort-cli-analyze-args: '--config-file=$HOME/.ort/config/.ort.yml'
+        ort-cli-evaluate-args: '--rules-file=$HOME/.ort/config/evaluator.rules.kts --license-classifications-file=$HOME/.ort/config/license-classifications.yml'
