@@ -1,15 +1,16 @@
 name: "Orbit8 ORT Scan - aspnet/Mvc (vmaster, #27)"
-on:  
+on:
   workflow_dispatch:
     inputs:
       vcs_url:
         description: 'Repository URL to scan'
         required: true
         default: 'https://github.com/aspnet/Mvc.git'
-      github_token:
-        description: 'GitHub Personal Access Token for private repository access'
+      vcs_revision:
+        description: 'Branch, tag or commit to scan'
         required: false
-        default: ''
+        default: 'master'
+
 jobs:
   ort-scan:
     runs-on: ubuntu-latest
@@ -19,74 +20,80 @@ jobs:
       security-events: write
 
     steps:
-    - name: Checkout code
+    - name: Checkout ORT config
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0        
+        fetch-depth: 0
         path: ".ort-config"
-        
+
     - name: Setup ORT configuration files
       run: |
-        # Create ORT config directory     
-        mkdir -p "/$HOME/.ort/config"
-        
-        # Move Fetched Default Config into Place
-        mv .ort-config "/$HOME/.ort/config"
-     
-        # Copy evaluator rules to ORT config directory
-        cp /home/runner/.ort/config/.ort-config/evaluator.rules.kts "$HOME/.ort/config/evaluator.rules.kts"
-        cp /home/runner/.ort/config/.ort-config/license-classifications.yml "$HOME/.ort/config/license-classifications.yml"
-        cp /home/runner/.ort/config/.ort-config/.ort.yml "$HOME/.ort/config/.ort.yml"
+        # Create ORT config directory
+        mkdir -p "$HOME/.ort/config"
+
+        # Copy evaluator rules, license classifications and repo config
+        cp .ort-config/evaluator.rules.kts         "$HOME/.ort/config/evaluator.rules.kts"
+        cp .ort-config/license-classifications.yml "$HOME/.ort/config/license-classifications.yml"
+        cp .ort-config/.ort.yml                    "$HOME/.ort/config/.ort.yml"
+
+        # Remove the config checkout so it is not scanned
+        rm -rf .ort-config
 
         echo "ORT configuration files setup complete"
-    
-    - name: Configure Git credentials for private repository access
-      if: github.event.inputs.github_token != ''
+
+    - name: Clone repository to scan
+      env:
+        VCS_URL: ${{ github.event.inputs.vcs_url }}
+        VCS_REV: ${{ github.event.inputs.vcs_revision }}
+        TOKEN:   ${{ secrets.SCAN_TOKEN }}
       run: |
-        # Configure git to use the token for authentication
-        git config --global url."https://${{ github.event.inputs.github_token }}@github.com/".insteadOf "https://github.com/"
-        git config --global url."https://oauth2:${{ github.event.inputs.github_token }}@github.com/".insteadOf "https://github.com/"
-        # Store credentials for git credential helper
-        git config --global credential.helper store
-        echo "https://oauth2:${{ github.event.inputs.github_token }}@github.com" > ~/.git-credentials
-        echo "https://${{ github.event.inputs.github_token }}@github.com" >> ~/.git-credentials
-        # SSH configuration
-        mkdir -p ~/.ssh
-        chmod 700 ~/.ssh
-        ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-        chmod 600 ~/.git-credentials
-    
-    - name: Validate GitHub token and repository access
-      if: github.event.inputs.github_token != ''
-      run: |
-        OWNER=$(echo "${{ github.event.inputs.vcs_url }}" | sed -E 's|.*github\.com[:/]([^/]+)/.*|\1|')
-        REPO=$(echo "${{ github.event.inputs.vcs_url }}" | sed -E 's|.*github\.com[:/][^/]+/([^/.]+).*|\1|')
-        
-        echo "Testing token access to: $OWNER/$REPO"
-        
-        # Test if we can access the repository with the token
-        if curl -s -H "Authorization: token ${{ github.event.inputs.github_token }}" \
-          "https://api.github.com/repos/$OWNER/$REPO" | grep -q '"id"'; then
-          echo "✓ Token is valid and has access to the repository"
+        # Use the token only if the SCAN_TOKEN secret is set (for private repos)
+        if [ -n "$TOKEN" ]; then
+          AUTH_URL=$(echo "$VCS_URL" | sed -E "s|https://|https://x-access-token:${TOKEN}@|")
         else
-          echo "⚠ Token validation check: repository may be public or token may not have access"
+          AUTH_URL="$VCS_URL"
         fi
-    
+
+        git clone "$AUTH_URL" scan-target
+        cd scan-target
+        git checkout "$VCS_REV"
+
+        # Remove the token from the saved remote URL,
+        # so it does not end up in ORT result files
+        git remote set-url origin "$VCS_URL"
+
+        echo "Cloned $VCS_URL at $(git rev-parse HEAD)"
+
+    - name: Fix dead NuGet feeds in nuget.config
+      run: |
+        # The old dotnet.myget.org feeds are shut down. If a nuget.config
+        # points to them, nuget-inspector fails and ORT finds zero packages.
+        find scan-target -iname 'nuget.config' | while read -r f; do
+          echo "Patching $f"
+
+          # Remove dead MyGet feeds (other feeds are kept)
+          sed -i '/myget\.org/Id' "$f"
+
+          # Add nuget.org if it is not there. Insert before </packageSources>
+          # so a <clear /> at the top does not remove it.
+          if ! grep -qi 'api.nuget.org' "$f"; then
+            sed -i 's|</packageSources>|  <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />\n  </packageSources>|I' "$f"
+          fi
+
+          cat "$f"
+        done
+
     - name: Run ORT
       uses: oss-review-toolkit/ort-ci-github-action@v1
       env:
-        GITHUB_TOKEN: ${{ github.event.inputs.github_token || secrets.GITHUB_TOKEN }}
-        ORT_VCS_GIT_USERNAME: oauth2
-        ORT_VCS_GIT_PASSWORD: ${{ github.event.inputs.github_token || secrets.GITHUB_TOKEN }}
-        GIT_USERNAME: oauth2
-        GIT_PASSWORD: ${{ github.event.inputs.github_token || secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.SCAN_TOKEN || secrets.GITHUB_TOKEN }}
       with:
         # Pin the ORT image to a known-good release. The 'latest'/'89.3.0' builds are
         # broken (missing Kotlin runtime -> NoClassDefFoundError: kotlin/jvm/internal/Intrinsics).
         # 89.0.0 is the last distinct image before that regression.
         image: 'ghcr.io/oss-review-toolkit/ort:89.0.0'
-        vcs-url: 'https://github.com/aspnet/Mvc.git'
-        vcs-revision: 'master'
+        # No vcs-url here: ORT scans the patched local folder instead of cloning again
+        project-path: ${{ github.workspace }}/scan-target
         allow-dynamic-versions: 'true'
         run: >-
             cache-dependencies,
